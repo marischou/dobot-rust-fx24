@@ -9,3 +9,6 @@ tokio-serial = "^4.3.3"
 tokio = { version = "^0.2.10", features = ["io-util"] }
 failure = "^0.1.6"
 getset = "^0.0.9"
+
+[features]
+dobot-test = []
