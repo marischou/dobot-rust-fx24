@@ -1,6 +1,7 @@
 use crate::error::{Error as DobotError, Result as DobotResult};
 use getset::{CopyGetters, Getters};
-use std::convert::TryInto;
+use std::{array::FixedSizeArray, convert::TryInto, io::prelude::*, marker::Unpin};
+use tokio::io::AsyncReadExt;
 
 #[derive(Clone, Debug, Getters, CopyGetters)]
 pub struct DobotMessage {
@@ -51,25 +52,29 @@ impl DobotMessage {
             .collect::<Vec<u8>>()
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> DobotResult<Self> {
-        if bytes.len() < 6 {
+    pub fn from_bytes<B>(bytes: B) -> DobotResult<Self>
+    where
+        B: AsRef<[u8]>,
+    {
+        let as_ref = bytes.as_ref();
+        if as_ref.len() < 6 {
             return Err(DobotError::DeserializeError("message is truncated".into()));
         }
 
-        let header: [u8; 2] = bytes[0..2].try_into().unwrap();
-        let len = bytes[2];
+        let header: [u8; 2] = as_ref[0..2].try_into().unwrap();
+        let len = as_ref[2];
 
-        if bytes.len() != len as usize + 6 {
+        if as_ref.len() != len as usize + 4 {
             return Err(DobotError::DeserializeError("message is truncated".into()));
         }
 
-        let id = bytes[3];
-        let ctrl = bytes[4];
-        let params = bytes[5..(bytes.len() - 1)]
+        let id = as_ref[3];
+        let ctrl = as_ref[4];
+        let params = as_ref[5..(as_ref.len() - 1)]
             .into_iter()
             .map(|byte| *byte)
             .collect::<Vec<u8>>();
-        let checksum = bytes[bytes.len() - 1];
+        let checksum = as_ref[as_ref.len() - 1];
 
         {
             let expected = Self::compute_checksum(id, ctrl, &params);
@@ -93,12 +98,65 @@ impl DobotMessage {
         Ok(msg)
     }
 
+    pub fn from_reader<R>(mut reader: R) -> DobotResult<Self>
+    where
+        R: Read,
+    {
+        let header_buffer = {
+            let mut header = [0; 2];
+            reader.read_exact(&mut header)?;
+            header
+        };
+        let len_buffer = {
+            let mut len = [0; 1];
+            reader.read_exact(&mut len)?;
+            len
+        };
+        let len = len_buffer[0];
+        let data_buffer = {
+            let mut data = vec![0; len as usize];
+            reader.read_exact(&mut data)?;
+            data
+        };
+        let bytes = [
+            header_buffer.as_slice(),
+            len_buffer.as_slice(),
+            data_buffer.as_slice(),
+        ]
+        .concat();
+        let msg = Self::from_bytes(bytes)?;
+        Ok(msg)
+    }
+
+    pub async fn from_async_reader<R>(mut reader: R) -> DobotResult<Self>
+    where
+        R: AsyncReadExt + Unpin,
+    {
+        let prefix = {
+            let mut prefix = [0u8; 5];
+            reader.read_exact(&mut prefix).await?;
+            prefix
+        };
+        let len = prefix[2];
+        let suffix = {
+            let mut suffix = vec![0u8; len as usize - 1];
+            reader.read_exact(suffix.as_mut_slice()).await?;
+            suffix
+        };
+        let bytes = [prefix.as_slice(), suffix.as_slice()].concat();
+        let msg = Self::from_bytes(bytes)?;
+        Ok(msg)
+    }
+
     fn compute_checksum(id: u8, ctrl: u8, params: &[u8]) -> u8 {
         let (checksum, _) = id.overflowing_add(ctrl);
-        let checksum = params.iter().fold(0u8, |prev_cksum, byte| {
-            let (new_cksum, _) = prev_cksum.overflowing_add(*byte);
-            new_cksum
-        }) + checksum;
+        let (checksum, _) = params
+            .iter()
+            .fold(0u8, |prev_cksum, byte| {
+                let (new_cksum, _) = prev_cksum.overflowing_add(*byte);
+                new_cksum
+            })
+            .overflowing_add(checksum);
         let (checksum, _) = checksum.overflowing_neg();
         checksum
     }
