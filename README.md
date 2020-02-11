@@ -1,17 +1,15 @@
 # dobot-rust
 
-This project lets you drive Dobots in pure Rust in high-level and asynchronous API.
+Drive Dobot robot arms in Rust with high-level and asynchronous API.
 
-## Build
+## Usage
 
-The project is not published to crates.io yet. Please git-clone your copy before it happens.
+To include this crate in your project, add this line to your `Cargo.toml`.
 
-To build this project,
-
-```sh
-cargo build
+```toml
+dobot = "^0.1.1"
 ```
 
 ## License
 
-MIT license
+MIT license. See [license file](LICENSE).
