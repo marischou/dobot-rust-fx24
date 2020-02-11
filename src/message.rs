@@ -3,6 +3,7 @@ use getset::{CopyGetters, Getters};
 use std::{array::FixedSizeArray, convert::TryInto, io::prelude::*, marker::Unpin};
 use tokio::io::AsyncReadExt;
 
+/// The message format of Dobot protocol.
 #[derive(Clone, Debug, Getters, CopyGetters)]
 pub struct DobotMessage {
     #[get = "pub"]
@@ -20,6 +21,7 @@ pub struct DobotMessage {
 }
 
 impl DobotMessage {
+    /// Create message object.
     pub fn new(id: u8, ctrl: u8, params: Vec<u8>) -> DobotResult<Self> {
         if params.len() > u8::max_value() as usize + 2 {
             return Err(DobotError::ParamsTooLong);
@@ -40,6 +42,7 @@ impl DobotMessage {
         Ok(msg)
     }
 
+    /// Serialize message to bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.header
             .iter()
@@ -52,6 +55,7 @@ impl DobotMessage {
             .collect::<Vec<u8>>()
     }
 
+    /// Create message from serialized bytes.
     pub fn from_bytes<B>(bytes: B) -> DobotResult<Self>
     where
         B: AsRef<[u8]>,
@@ -98,6 +102,7 @@ impl DobotMessage {
         Ok(msg)
     }
 
+    /// Create message by synchronously reading bytes from reader.
     pub fn from_reader<R>(mut reader: R) -> DobotResult<Self>
     where
         R: Read,
@@ -128,6 +133,7 @@ impl DobotMessage {
         Ok(msg)
     }
 
+    /// Create message by asynchronously reading bytes from reader.
     pub async fn from_async_reader<R>(mut reader: R) -> DobotResult<Self>
     where
         R: AsyncReadExt + Unpin,

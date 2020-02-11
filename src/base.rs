@@ -6,6 +6,7 @@ use std::{convert::TryInto, path::Path, time::Duration};
 use tokio::io::AsyncWriteExt;
 use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
 
+/// Defines the format to describe the robot pose.
 #[derive(Debug, Clone)]
 pub enum Mode {
     #[allow(non_camel_case_types)]
@@ -30,6 +31,7 @@ pub enum Mode {
     MODE_PTP_JUMP_MOVL_XYZ = 0x09,
 }
 
+/// Describes the pose of robot arm.
 #[derive(Debug, Clone)]
 pub struct Pose {
     pub x: f32,
@@ -42,11 +44,13 @@ pub struct Pose {
     pub j4: f32,
 }
 
+/// The Dobot robot arm controller type.
 pub struct Dobot {
     serial: Serial,
 }
 
 impl Dobot {
+    /// Create controller object from device file.
     pub async fn open<P>(path: P) -> DobotResult<Self>
     where
         P: AsRef<Path>,
@@ -265,6 +269,7 @@ impl Dobot {
         Ok(index)
     }
 
+    /// Get the current pose of robot.
     pub async fn get_pose(&mut self) -> DobotResult<Pose> {
         let request_msg = DobotMessage::new(10, 0x00, vec![]).unwrap();
         let response_msg = self.send_command(request_msg).await?;
@@ -300,13 +305,15 @@ impl Dobot {
         Ok(pose)
     }
 
+    /// Move to given pose.
     pub async fn move_to(&mut self, x: f32, y: f32, z: f32, r: f32, wait: bool) -> DobotResult<()> {
         self.set_ptp_cmd(x, y, z, r, Mode::MODE_PTP_MOVL_XYZ, wait)
             .await?;
         Ok(())
     }
 
-    async fn send_command(&mut self, request_msg: DobotMessage) -> DobotResult<DobotMessage> {
+    /// Send user-defined request to Dobot and obtain response.
+    pub async fn send_command(&mut self, request_msg: DobotMessage) -> DobotResult<DobotMessage> {
         // send message
         self.serial
             .write_all(request_msg.to_bytes().as_slice())

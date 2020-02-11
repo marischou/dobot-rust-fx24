@@ -1,6 +1,7 @@
 use failure::Fail;
 use std::io::Error as StdIoError;
 
+/// Error type for dobot crate.
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "the size of params can be up to 254 bytes")]
