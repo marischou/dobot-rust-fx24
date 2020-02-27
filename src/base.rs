@@ -32,7 +32,7 @@ pub enum Mode {
 }
 
 /// Describes the pose of robot arm.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Pose {
     pub x: f32,
     pub y: f32,
@@ -84,8 +84,8 @@ impl Dobot {
         Ok(dobot)
     }
 
-    pub async fn set_ptp_joint_params(
-        &mut self,
+    pub async fn set_ptp_joint_params<'a>(
+        &'a mut self,
         v_x: f32,
         v_y: f32,
         v_z: f32,
@@ -94,7 +94,7 @@ impl Dobot {
         a_y: f32,
         a_z: f32,
         a_r: f32,
-    ) -> DobotResult<()> {
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = [
             v_x.to_le_bytes(),
             v_y.to_le_bytes(),
@@ -110,12 +110,21 @@ impl Dobot {
         .map(|byte| *byte)
         .collect::<Vec<u8>>();
 
-        self.send_command(DobotMessage::new(80, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(80, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_cp_cmd(&mut self, x: f32, y: f32, z: f32) -> DobotResult<()> {
+    pub async fn set_cp_cmd<'a>(
+        &'a mut self,
+        x: f32,
+        y: f32,
+        z: f32,
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = [0x01]
             .iter()
             .chain(
@@ -127,16 +136,20 @@ impl Dobot {
             .map(|byte| *byte)
             .collect::<Vec<u8>>();
 
-        self.send_command(DobotMessage::new(91, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(91, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_ptp_coordinate_params(
-        &mut self,
+    pub async fn set_ptp_coordinate_params<'a>(
+        &'a mut self,
         velocity: f32,
         acceleration: f32,
-    ) -> DobotResult<()> {
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = [
             velocity.to_le_bytes(),
             velocity.to_le_bytes(),
@@ -148,48 +161,63 @@ impl Dobot {
         .map(|byte| *byte)
         .collect::<Vec<u8>>();
 
-        self.send_command(DobotMessage::new(81, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(81, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_ptp_jump_params(&mut self, jump: f32, limit: f32) -> DobotResult<()> {
+    pub async fn set_ptp_jump_params<'a>(
+        &'a mut self,
+        jump: f32,
+        limit: f32,
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = [jump.to_le_bytes(), limit.to_le_bytes()]
             .iter()
             .flatten()
             .map(|byte| *byte)
             .collect::<Vec<u8>>();
 
-        self.send_command(DobotMessage::new(82, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(82, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_ptp_common_params(
-        &mut self,
+    pub async fn set_ptp_common_params<'a>(
+        &'a mut self,
         velocity: f32,
         acceleration: f32,
-    ) -> DobotResult<()> {
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = [velocity.to_le_bytes(), acceleration.to_le_bytes()]
             .iter()
             .flatten()
             .map(|byte| *byte)
             .collect::<Vec<u8>>();
 
-        self.send_command(DobotMessage::new(83, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(83, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_ptp_cmd(
-        &mut self,
+    pub async fn set_ptp_cmd<'a>(
+        &'a mut self,
         x: f32,
         y: f32,
         z: f32,
         r: f32,
         mode: Mode,
-        wait: bool,
-    ) -> DobotResult<()> {
+    ) -> DobotResult<WaitHandle<'a>> {
         let request_msg = {
             let params = [mode as u8]
                 .iter()
@@ -205,73 +233,92 @@ impl Dobot {
                 )
                 .map(|byte| *byte)
                 .collect::<Vec<u8>>();
-            DobotMessage::new(84, 0x03, params).unwrap()
+            DobotMessage::new(84, 0x03, params)?
         };
 
         let response_msg = self.send_command(request_msg).await?;
+        let params = response_msg.params();
+        let index = u64::from_le_bytes(params[0..8].try_into().unwrap());
 
-        if !wait {
-            return Ok(());
-        }
-
-        let expected_index = {
-            let params = response_msg.params();
-            u32::from_le_bytes(params[0..4].try_into().unwrap())
-        };
-
-        loop {
-            let current_index = self.get_queued_cmd_current_index().await?;
-            if current_index == expected_index {
-                break;
-            }
-        }
-
-        Ok(())
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_end_effector_suction_cup(&mut self, enable: bool) -> DobotResult<()> {
+    pub async fn set_end_effector_suction_cup<'a>(
+        &'a mut self,
+        enable: bool,
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = vec![0x01, enable as u8];
-        self.send_command(DobotMessage::new(62, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(62, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
-    pub async fn set_end_effector_gripper(&mut self, enable: bool) -> DobotResult<()> {
+    pub async fn set_end_effector_gripper<'a>(
+        &'a mut self,
+        enable: bool,
+    ) -> DobotResult<WaitHandle<'a>> {
         let params = vec![0x01, enable as u8];
-        self.send_command(DobotMessage::new(63, 0x03, params).unwrap())
+        let response_msg = self
+            .send_command(DobotMessage::new(63, 0x03, params)?)
             .await?;
-        Ok(())
+        let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
     pub async fn set_queued_cmd_start_exec(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(240, 0x01, vec![]).unwrap())
+        self.send_command(DobotMessage::new(240, 0x01, vec![])?)
             .await?;
         Ok(())
     }
 
     pub async fn set_queued_cmd_stop_exec(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(241, 0x01, vec![]).unwrap())
+        self.send_command(DobotMessage::new(241, 0x01, vec![])?)
             .await?;
         Ok(())
     }
 
     pub async fn set_queued_cmd_clear(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(245, 0x01, vec![]).unwrap())
+        self.send_command(DobotMessage::new(245, 0x01, vec![])?)
             .await?;
         Ok(())
     }
 
-    pub async fn get_queued_cmd_current_index(&mut self) -> DobotResult<u32> {
-        let request_msg = DobotMessage::new(246, 0x00, vec![]).unwrap();
+    pub async fn get_queued_cmd_current_index(&mut self) -> DobotResult<u64> {
+        let request_msg = DobotMessage::new(246, 0x00, vec![])?;
         let response_msg = self.send_command(request_msg).await?;
         let params = response_msg.params();
-        let index = u32::from_le_bytes(params[0..4].try_into().unwrap());
+        let index = u64::from_le_bytes(params[0..8].try_into().unwrap());
         Ok(index)
+    }
+
+    /// Grips on end effector.
+    pub async fn grip<'a>(&'a mut self) -> DobotResult<WaitHandle<'a>> {
+        let handle = self.set_end_effector_gripper(true).await?;
+        Ok(handle)
+    }
+
+    /// Releases gripper on end effector.
+    pub async fn release<'a>(&'a mut self) -> DobotResult<WaitHandle<'a>> {
+        let handle = self.set_end_effector_gripper(false).await?;
+        Ok(handle)
+    }
+
+    /// Starts the calibration process.
+    pub async fn calibrate(&mut self) -> DobotResult<()> {
+        let request_msg = DobotMessage::new(31, 0x03, vec![])?;
+        self.send_command(request_msg).await?;
+        Ok(())
     }
 
     /// Get the current pose of robot.
     pub async fn get_pose(&mut self) -> DobotResult<Pose> {
-        let request_msg = DobotMessage::new(10, 0x00, vec![]).unwrap();
+        let request_msg = DobotMessage::new(10, 0x00, vec![])?;
         let response_msg = self.send_command(request_msg).await?;
 
         let params = {
@@ -306,10 +353,17 @@ impl Dobot {
     }
 
     /// Move to given pose.
-    pub async fn move_to(&mut self, x: f32, y: f32, z: f32, r: f32, wait: bool) -> DobotResult<()> {
-        self.set_ptp_cmd(x, y, z, r, Mode::MODE_PTP_MOVL_XYZ, wait)
+    pub async fn move_to<'a>(
+        &'a mut self,
+        x: f32,
+        y: f32,
+        z: f32,
+        r: f32,
+    ) -> DobotResult<WaitHandle<'a>> {
+        let handle = self
+            .set_ptp_cmd(x, y, z, r, Mode::MODE_PTP_MOVL_XYZ)
             .await?;
-        Ok(())
+        Ok(handle)
     }
 
     /// Send user-defined request to Dobot and obtain response.
@@ -323,5 +377,28 @@ impl Dobot {
         let response_msg = DobotMessage::from_async_reader(&mut self.serial).await?;
 
         Ok(response_msg)
+    }
+}
+
+pub struct WaitHandle<'a> {
+    command_index: u64,
+    dobot: &'a mut Dobot,
+}
+
+impl<'a> WaitHandle<'a> {
+    pub(crate) fn new(dobot: &'a mut Dobot, command_index: u64) -> Self {
+        Self {
+            command_index,
+            dobot,
+        }
+    }
+
+    pub async fn wait(self) -> DobotResult<()> {
+        loop {
+            let current_index = self.dobot.get_queued_cmd_current_index().await?;
+            if current_index == self.command_index {
+                break Ok(());
+            }
+        }
     }
 }

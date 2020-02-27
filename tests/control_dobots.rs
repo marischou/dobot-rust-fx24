@@ -32,19 +32,19 @@ fn control_dobot_test() -> Fallible<()> {
 
         println!("pose {:?}", dobot.get_pose().await?);
 
-        dobot.move_to(100.0, 100.0, 0.0, 0.0, true).await?;
+        dobot.move_to(100.0, 100.0, 0.0, 0.0).await?.wait().await?;
         println!("pose {:?}", dobot.get_pose().await?);
 
-        dobot.move_to(100.0, 200.0, 0.0, 0.0, true).await?;
+        dobot.move_to(100.0, 200.0, 0.0, 0.0).await?.wait().await?;
         println!("pose {:?}", dobot.get_pose().await?);
 
-        dobot.move_to(200.0, 200.0, 0.0, 0.0, true).await?;
+        dobot.move_to(200.0, 200.0, 0.0, 0.0).await?.wait().await?;
         println!("pose {:?}", dobot.get_pose().await?);
 
-        dobot.move_to(200.0, 100.0, 0.0, 0.0, true).await?;
+        dobot.move_to(200.0, 100.0, 0.0, 0.0).await?.wait().await?;
         println!("pose {:?}", dobot.get_pose().await?);
 
-        dobot.move_to(100.0, 100.0, 0.0, 0.0, true).await?;
+        dobot.move_to(100.0, 100.0, 0.0, 0.0).await?.wait().await?;
         println!("pose {:?}", dobot.get_pose().await?);
 
         DobotResult::Ok(())
