@@ -2,6 +2,7 @@ use crate::{
     error::{Error as DobotError, Result as DobotResult},
     message::DobotMessage,
 };
+use num_derive::FromPrimitive;
 use std::{convert::TryInto, path::Path, time::Duration};
 use tokio::io::AsyncWriteExt;
 use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
@@ -111,7 +112,12 @@ impl Dobot {
         .collect::<Vec<u8>>();
 
         let response_msg = self
-            .send_command(DobotMessage::new(80, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetPtpJointParams,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -137,7 +143,7 @@ impl Dobot {
             .collect::<Vec<u8>>();
 
         let response_msg = self
-            .send_command(DobotMessage::new(91, 0x03, params)?)
+            .send_command(DobotMessage::new(CommandID::SetCpCmd, true, true, params)?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -162,7 +168,12 @@ impl Dobot {
         .collect::<Vec<u8>>();
 
         let response_msg = self
-            .send_command(DobotMessage::new(81, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetPtpCoordinateParams,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -182,7 +193,12 @@ impl Dobot {
             .collect::<Vec<u8>>();
 
         let response_msg = self
-            .send_command(DobotMessage::new(82, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetPtpJumpParams,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -202,7 +218,12 @@ impl Dobot {
             .collect::<Vec<u8>>();
 
         let response_msg = self
-            .send_command(DobotMessage::new(83, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetPtpCommonParams,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -233,7 +254,7 @@ impl Dobot {
                 )
                 .map(|byte| *byte)
                 .collect::<Vec<u8>>();
-            DobotMessage::new(84, 0x03, params)?
+            DobotMessage::new(CommandID::SetPtpCmd, true, true, params)?
         };
 
         let response_msg = self.send_command(request_msg).await?;
@@ -250,7 +271,12 @@ impl Dobot {
     ) -> DobotResult<WaitHandle<'a>> {
         let params = vec![0x01, enable as u8];
         let response_msg = self
-            .send_command(DobotMessage::new(62, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetEndEffectorSuctionCup,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
 
@@ -264,7 +290,12 @@ impl Dobot {
     ) -> DobotResult<WaitHandle<'a>> {
         let params = vec![0x01, enable as u8];
         let response_msg = self
-            .send_command(DobotMessage::new(63, 0x03, params)?)
+            .send_command(DobotMessage::new(
+                CommandID::GetSetEndEffectorGripper,
+                true,
+                true,
+                params,
+            )?)
             .await?;
         let index = u64::from_le_bytes(response_msg.params()[0..8].try_into().unwrap());
         let handle = WaitHandle::new(self, index);
@@ -272,25 +303,41 @@ impl Dobot {
     }
 
     pub async fn set_queued_cmd_start_exec(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(240, 0x01, vec![])?)
-            .await?;
+        self.send_command(DobotMessage::new(
+            CommandID::SetQueuedCmdStartExec,
+            true,
+            false,
+            vec![],
+        )?)
+        .await?;
         Ok(())
     }
 
     pub async fn set_queued_cmd_stop_exec(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(241, 0x01, vec![])?)
-            .await?;
+        self.send_command(DobotMessage::new(
+            CommandID::SetQueuedCmdStopExec,
+            true,
+            false,
+            vec![],
+        )?)
+        .await?;
         Ok(())
     }
 
     pub async fn set_queued_cmd_clear(&mut self) -> DobotResult<()> {
-        self.send_command(DobotMessage::new(245, 0x01, vec![])?)
-            .await?;
+        self.send_command(DobotMessage::new(
+            CommandID::SetQueuedCmdClear,
+            true,
+            false,
+            vec![],
+        )?)
+        .await?;
         Ok(())
     }
 
     pub async fn get_queued_cmd_current_index(&mut self) -> DobotResult<u64> {
-        let request_msg = DobotMessage::new(246, 0x00, vec![])?;
+        let request_msg =
+            DobotMessage::new(CommandID::SetQueuedCmdCurrentIndex, false, false, vec![])?;
         let response_msg = self.send_command(request_msg).await?;
         let params = response_msg.params();
         let index = u64::from_le_bytes(params[0..8].try_into().unwrap());
@@ -310,15 +357,18 @@ impl Dobot {
     }
 
     /// Starts the calibration process.
-    pub async fn calibrate(&mut self) -> DobotResult<()> {
-        let request_msg = DobotMessage::new(31, 0x03, vec![])?;
-        self.send_command(request_msg).await?;
-        Ok(())
+    pub async fn set_home<'a>(&'a mut self) -> DobotResult<WaitHandle<'a>> {
+        let request_msg = DobotMessage::new(CommandID::SetHomeCmd, true, true, vec![])?;
+        let response_msg = self.send_command(request_msg).await?;
+        let params = response_msg.params();
+        let index = u64::from_le_bytes(params[0..8].try_into().unwrap());
+        let handle = WaitHandle::new(self, index);
+        Ok(handle)
     }
 
     /// Get the current pose of robot.
     pub async fn get_pose(&mut self) -> DobotResult<Pose> {
-        let request_msg = DobotMessage::new(10, 0x00, vec![])?;
+        let request_msg = DobotMessage::new(CommandID::GetPose, false, false, vec![])?;
         let response_msg = self.send_command(request_msg).await?;
 
         let params = {
@@ -401,4 +451,77 @@ impl<'a> WaitHandle<'a> {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromPrimitive)]
+pub enum CommandID {
+    GetSetDeviceSn = 0,
+    GetSetDeviceName = 1,
+    GetDeviceVersion = 2,
+    GetDeviceWithL = 3,
+    GetDeviceTime = 4,
+    // GetDeviceId = 0, // 4
+    GetPose = 10,
+    ResetPose = 11,
+    GetPoseL = 13,
+    GetAlarmsState = 20,
+    ClearAllAlarmsState = 21,
+    GetSetHomeParams = 30,
+    SetHomeCmd = 31,
+    // GetSetAutoLeveling = 0, // 30
+    GetSetHHTTrigMode = 40,
+    GetSetHHTTrigOutputEnabled = 41,
+    GetHHTTrigOutput = 42,
+    GetSetEndEffectorParams = 60,
+    GetSetEndEffectorLaser = 61,
+    GetSetEndEffectorSuctionCup = 62,
+    GetSetEndEffectorGripper = 63,
+    GetSetJogJointParams = 70,
+    GetSetJogCoordinateParams = 71,
+    GetSetJogCommonParams = 72,
+    SetJogCmd = 73,
+    GetSetJogLParams = 74,
+    GetSetPtpJointParams = 80,
+    GetSetPtpCoordinateParams = 81,
+    GetSetPtpJumpParams = 82,
+    GetSetPtpCommonParams = 83,
+    SetPtpCmd = 84,
+    GetSetPtpLParams = 85,
+    SetPtpWithLCmd = 86,
+    GetSetPtpJump2Params = 87,
+    SetPtpPoCmd = 88,
+    SetPtpPoWithLCmd = 89,
+    GetSetCpParams = 90,
+    SetCpCmd = 91,
+    SetCpLeCmd = 92,
+    GetSetArcParams = 100,
+    SetSetArcCmd = 101,
+    SetWaitCmd = 110,
+    SetTrigCmd = 120,
+    GetSetIoMultiplexing = 130,
+    GetSetIoDo = 131,
+    GetSetIoPwm = 132,
+    GetIoDi = 133,
+    GetIoAdc = 134,
+    SetEMotor = 135,
+    GetSetColorSensor = 137,
+    GetSetIrSwitch = 138,
+    GetSetAngleSensorStaticError = 140,
+    GetSetWifiConfigMode = 150,
+    GetSetWifiSsid = 151,
+    GetSetWifiPassword = 152,
+    GetSetWifiAddress = 153,
+    GetSetWifiNetmask = 154,
+    GetSetWifiGateway = 155,
+    GetSetWifiDns = 156,
+    GetSetWifiConnectStatus = 157,
+    SetLostStepParams = 170,
+    SetLostStepCmd = 171,
+    SetQueuedCmdStartExec = 240,
+    SetQueuedCmdStopExec = 241,
+    SetQueuedCmdForceStopExec = 242,
+    SetQueuedCmdStartDownload = 243,
+    SetQueuedCmdStopDownload = 244,
+    SetQueuedCmdClear = 245,
+    SetQueuedCmdCurrentIndex = 246,
 }

@@ -14,6 +14,8 @@ tokio-serial = "^4.3.3"
 tokio = { version = "^0.2.10", features = ["io-util"] }
 failure = "^0.1.6"
 getset = "^0.0.9"
+num-derive = "^0.3.0"
+num-traits = "^0.2.11"
 
 [dev-dependencies]
 toml = "^0.5.6"

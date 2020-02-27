@@ -1,5 +1,9 @@
-use crate::error::{Error as DobotError, Result as DobotResult};
+use crate::{
+    base::CommandID,
+    error::{Error as DobotError, Result as DobotResult},
+};
 use getset::{CopyGetters, Getters};
+use num_traits::FromPrimitive;
 use std::{array::FixedSizeArray, convert::TryInto, io::prelude::*, marker::Unpin};
 use tokio::io::AsyncReadExt;
 
@@ -11,9 +15,11 @@ pub struct DobotMessage {
     #[get_copy = "pub"]
     len: u8,
     #[get_copy = "pub"]
-    id: u8,
+    id: CommandID,
     #[get_copy = "pub"]
-    ctrl: u8,
+    rw: bool,
+    #[get_copy = "pub"]
+    is_queued: bool,
     #[get = "pub"]
     params: Vec<u8>,
     #[get_copy = "pub"]
@@ -22,19 +28,20 @@ pub struct DobotMessage {
 
 impl DobotMessage {
     /// Create message object.
-    pub fn new(id: u8, ctrl: u8, params: Vec<u8>) -> DobotResult<Self> {
+    pub fn new(id: CommandID, rw: bool, is_queued: bool, params: Vec<u8>) -> DobotResult<Self> {
         if params.len() > u8::max_value() as usize + 2 {
             return Err(DobotError::ParamsTooLong);
         }
 
         let len = params.len() as u8 + 2;
-        let checksum = Self::compute_checksum(id, ctrl, &params);
+        let checksum = Self::compute_checksum(id, rw, is_queued, &params);
 
         let msg = Self {
             header: [0xaa, 0xaa],
             len,
             id,
-            ctrl,
+            rw,
+            is_queued,
             params,
             checksum,
         };
@@ -44,11 +51,12 @@ impl DobotMessage {
 
     /// Serialize message to bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
+        let ctrl = ((self.is_queued as u8) << 1) | (self.rw as u8);
         self.header
             .iter()
             .chain([self.len].iter())
-            .chain([self.id].iter())
-            .chain([self.ctrl].iter())
+            .chain([self.id as u8].iter())
+            .chain([ctrl].iter())
             .chain(self.params.iter())
             .chain([self.checksum].iter())
             .map(|byte| *byte)
@@ -72,8 +80,13 @@ impl DobotMessage {
             return Err(DobotError::DeserializeError("message is truncated".into()));
         }
 
-        let id = as_ref[3];
+        let id = CommandID::from_u8(as_ref[3]).ok_or(DobotError::DeserializeError(format!(
+            "unrecognized command ID {}",
+            as_ref[3]
+        )))?;
         let ctrl = as_ref[4];
+        let rw = (ctrl & 0x01) != 0;
+        let is_queued = (ctrl & 0x02) != 0;
         let params = as_ref[5..(as_ref.len() - 1)]
             .into_iter()
             .map(|byte| *byte)
@@ -81,7 +94,7 @@ impl DobotMessage {
         let checksum = as_ref[as_ref.len() - 1];
 
         {
-            let expected = Self::compute_checksum(id, ctrl, &params);
+            let expected = Self::compute_checksum(id, rw, is_queued, &params);
             if expected != checksum {
                 return Err(DobotError::IntegrityError {
                     expected,
@@ -94,7 +107,8 @@ impl DobotMessage {
             header,
             len,
             id,
-            ctrl,
+            rw,
+            is_queued,
             params,
             checksum,
         };
@@ -154,8 +168,9 @@ impl DobotMessage {
         Ok(msg)
     }
 
-    fn compute_checksum(id: u8, ctrl: u8, params: &[u8]) -> u8 {
-        let (checksum, _) = id.overflowing_add(ctrl);
+    fn compute_checksum(id: CommandID, rw: bool, is_queued: bool, params: &[u8]) -> u8 {
+        let ctrl = ((is_queued as u8) << 1) | (rw as u8);
+        let (checksum, _) = (id as u8).overflowing_add(ctrl);
         let (checksum, _) = params
             .iter()
             .fold(0u8, |prev_cksum, byte| {
