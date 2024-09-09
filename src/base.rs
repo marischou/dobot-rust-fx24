@@ -56,7 +56,7 @@ impl Dobot {
     where
         P: AsRef<Path>,
     {
-        let internal_path = path.as_ref().to_str().ok_or(Err(DeserializeError("path failed to be parsed".to_string()))?;
+        let internal_path = path.as_ref().to_str().ok_or(Err(DeserializeError("path failed to be parsed".to_string())))?;
         let serial = tokio_serial::new(internal_path, 115200)
             .data_bits(DataBits::Eight)
             .flow_control(FlowControl::None)
