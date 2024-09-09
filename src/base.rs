@@ -5,7 +5,7 @@ use crate::{
 use num_derive::FromPrimitive;
 use std::{convert::TryInto, path::Path, time::Duration};
 use tokio::io::AsyncWriteExt;
-use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
+use tokio_serial::{DataBits, FlowControl, Parity, SerialStream, SerialPortBuilderExt, StopBits};
 
 /// Defines the format to describe the robot pose.
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ pub struct Pose {
 
 /// The Dobot robot arm controller type.
 pub struct Dobot {
-    serial: Serial,
+    serial: SerialStream,
 }
 
 impl Dobot {
@@ -56,19 +56,13 @@ impl Dobot {
     where
         P: AsRef<Path>,
     {
-        let serial = {
-            let settings = SerialPortSettings {
-                baud_rate: 115200,
-                data_bits: DataBits::Eight,
-                flow_control: FlowControl::None,
-                parity: Parity::None,
-                stop_bits: StopBits::One,
-                timeout: Duration::from_secs(1),
-            };
-
-            let serial = Serial::from_path(path, &settings)?;
-            serial
-        };
+        let internal_path = path.as_ref().to_str().ok_or(Err(DeserializeError("path failed to be parsed".to_string()))?;
+        let serial = tokio_serial::new(internal_path, 115200)
+            .data_bits(DataBits::Eight)
+            .flow_control(FlowControl::None)
+            .parity(Parity::None)
+            .stop_bits(StopBits::One)
+            .timeout(Duration::from_secs(1)).open_native_async()?;
 
         let mut dobot = Self { serial };
 
@@ -423,7 +417,7 @@ impl Dobot {
             .write_all(request_msg.to_bytes().as_slice())
             .await?;
 
-        // recive message
+        // receive message
         let response_msg = DobotMessage::from_async_reader(&mut self.serial).await?;
 
         Ok(response_msg)
