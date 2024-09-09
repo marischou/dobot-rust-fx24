@@ -7,20 +7,26 @@ async fn main() -> Fallible<()> {
 
     println!("pose {:#?}", dobot.get_pose().await?);
 
-    dobot.move_to(100.0, 100.0, 0.0, 0.0).await?.wait().await?;
+    dobot.set_home().await?;
     println!("pose {:#?}", dobot.get_pose().await?);
 
-    dobot.move_to(100.0, 200.0, 0.0, 0.0).await?.wait().await?;
+    dobot.move_to(70.0, 70.0, 0.0, 0.0).await?.wait().await?;
     println!("pose {:#?}", dobot.get_pose().await?);
 
-    dobot.move_to(200.0, 200.0, 0.0, 0.0).await?.wait().await?;
+    dobot.move_to(70.0, 140.0, 0.0, 0.0).await?.wait().await?;
     println!("pose {:#?}", dobot.get_pose().await?);
 
-    dobot.move_to(200.0, 100.0, 0.0, 0.0).await?.wait().await?;
+    dobot.move_to(140.0, 140.0, 0.0, 0.0).await?.wait().await?;
     println!("pose {:#?}", dobot.get_pose().await?);
 
-    dobot.move_to(100.0, 100.0, 0.0, 0.0).await?.wait().await?;
+    dobot.move_to(140.0, 70.0, 0.0, 0.0).await?.wait().await?;
     println!("pose {:#?}", dobot.get_pose().await?);
 
+    dobot.move_to(70.0, 70.0, 0.0, 0.0).await?.wait().await?;
+    println!("pose {:#?}", dobot.get_pose().await?);
+
+    dobot.set_home().await?;
+    println!("pose {:#?}", dobot.get_pose().await?);
+    
     Ok(())
 }
