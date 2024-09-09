@@ -4,7 +4,7 @@ use crate::{
 };
 use getset::{CopyGetters, Getters};
 use num_traits::FromPrimitive;
-use std::{array::FixedSizeArray, convert::TryInto, io::prelude::*, marker::Unpin};
+use std::{convert::TryInto, io::prelude::*, marker::Unpin};
 use tokio::io::AsyncReadExt;
 
 /// The message format of Dobot protocol.
