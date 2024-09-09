@@ -1,3 +1,11 @@
+# This is a fork of dobot-rust!
+This fork fixes some slight dependency and deprecation issues. Particularly `tokio_serial`, `array::FixedSizeArray` and `feature(fixed_size_array)`. Do not use this yet as I have not changed any version number or naming scheme. Should be fine to use it as a local path though. fx24 stands for fix 2024.
+
+
+Below is the original github page.
+
+---
+
 # dobot-rust
 
 Drive Dobot robot arms in Rust with high-level and asynchronous API.
