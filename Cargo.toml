@@ -1,12 +1,12 @@
 [package]
-name = "dobot"
-description = "High-level API to control Dobot robot arms"
-version = "0.1.1"
-authors = ["jerry73204 <jerry73204@gmail.com>"]
-edition = "2018"
+name = "dobot-fx24"
+description = "fork of dobot-rust! | High-level API to control Dobot robot arms"
+version = "0.0.1"
+authors = ["jerry73204 <jerry73204@gmail.com>", "marischou"]
+edition = "2024"
 license = "MIT"
-documentation = "https://docs.rs/dobot"
-repository = "https://github.com/jerry73204/dobot-rust.git"
+documentation = "https://github.com/marischou/dobot-rust-fx24/tree/master"
+repository = "https://github.com/marischou/dobot-rust-fx24.git"
 readme = "README.md"
 
 [dependencies]
@@ -21,6 +21,3 @@ num-traits = "^0.2.19"
 toml = "^0.5.6"
 serde = { version = "^1.0.210", features = ["derive"] }
 tokio = { version = "^1.40.0", features = ["full"] }
-
-[features]
-dobot-test = []
