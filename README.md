@@ -2,6 +2,17 @@
 This fork fixes some slight dependency and deprecation issues. Particularly `tokio_serial`, `array::FixedSizeArray` and `feature(fixed_size_array)`. Do not use this yet as I have not changed any version number or naming scheme. Should be fine to use it as a local path though. fx24 stands for fix 2024.
 
 
+### Usage (fx24)
+1. Add the following to your Cargo.toml.
+```toml
+dobot = { path = "https://github.com/marischou/dobot-rust-fx24.git" }
+```
+2. Below is a simple example to get things started. (Working a version without external error tools.)
+```rust
+todo!();
+
+```
+
 Below is the original github page.
 
 ---
