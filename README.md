@@ -1,18 +1,46 @@
 # This is a fork of dobot-rust!
-This fork fixes some slight dependency and deprecation issues. Particularly `tokio_serial`, `array::FixedSizeArray` and `feature(fixed_size_array)`. Do not use this yet as I have not changed any version number or naming scheme. Should be fine to use it as a local path though. fx24 stands for fix 2024.
+This fork fixes some slight dependency and deprecation issues. Particularly `tokio_serial`, `array::FixedSizeArray` and `feature(fixed_size_array)`. fx24 stands for fix 2024.
 
 
-### Usage (fx24)
+### Usage (for fx24)
 1. Add the following to your Cargo.toml.
 ```toml
 dobot = { path = "https://github.com/marischou/dobot-rust-fx24.git" }
+failure = "0.1.8"
+tokio = { version = "1.40.0", features = ["full"] }
 ```
-2. Below is a simple example to get things started. (Working a version without external error tools.)
+2. Below is a simple example to get things started. (Working on a version without external error tools.)
 ```rust
-todo!();
+use failure::Fallible;
+use dobot::Dobot;
 
+#[tokio::main]
+async fn main() -> Fallible<()> {
+    // Change the path to your corresponding Dobot port.
+    let mut dobot = Dobot::open("/dev/ttyUSB0").await?;
+
+    print_pose(&mut dobot).await; 
+    dobot.set_home().await?.wait().await?;
+    print_pose(&mut dobot).await;
+
+    dobot.move_to(100.0, 50.0, 0.0, 0.0).await?.wait().await?;
+    print_pose(&mut dobot).await;
+    dobot.move_to(100.0, 0.0, 0.0, 0.0).await?.wait().await?;
+    print_pose(&mut dobot).await;
+
+    Ok(())
+}
+
+async fn print_pose<'a>(internal_dobot: &'a mut Dobot) {
+    let pose = internal_dobot.get_pose().await.unwrap();
+    println!(
+        "Pose: x: {} y: {} z: {} r: {} j1: {} j2: {} j3: {} j4: {}",
+        pose.x, pose.y, pose.z, pose.r, pose.j1, pose.j2, pose.j3, pose.j4
+    );
+}
 ```
 
+---
 Below is the original github page.
 
 ---
