@@ -12,7 +12,7 @@ tokio = { version = "1.40.0", features = ["full"] }
 2. Below is a simple example to get things started. (Working on a version without external error tools.)
 ```rust
 use failure::Fallible;
-use dobot::Dobot;
+use dobot_fx24::Dobot;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {
