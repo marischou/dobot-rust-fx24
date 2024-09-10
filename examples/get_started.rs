@@ -1,5 +1,5 @@
 use failure::Fallible;
-use dobot::Dobot;
+use dobot_24::Dobot;
 
 #[tokio::main]
 async fn main() -> Fallible<()> {
