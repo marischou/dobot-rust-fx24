@@ -5,7 +5,7 @@ This fork fixes some slight dependency and deprecation issues. Particularly `tok
 ### Usage (for fx24)
 1. Add the following to your Cargo.toml.
 ```toml
-dobot-fx24 = { path = "https://github.com/marischou/dobot-rust-fx24.git" }
+dobot-fx24 = { git = "https://github.com/marischou/dobot-rust-fx24.git" }
 failure = "0.1.8"
 tokio = { version = "1.40.0", features = ["full"] }
 ```
