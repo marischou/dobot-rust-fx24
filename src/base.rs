@@ -445,6 +445,10 @@ impl<'a> WaitHandle<'a> {
             }
         }
     }
+    
+    pub fn get_queued_index(self) -> u64 {
+        self.command_index
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromPrimitive)]
